@@ -9,13 +9,14 @@ from app.core.database import Base
 
 
 class Agent(Base):
-    """An autonomous AI agent with a wallet and a spending policy."""
+    """An autonomous AI agent with a wallet and an enforced spending policy."""
 
     __tablename__ = "agents"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     wallet_address: Mapped[str] = mapped_column(String(80), nullable=False, unique=True, index=True)
+    api_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_paused: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -37,9 +38,8 @@ class Agent(Base):
 class SpendingPolicy(Base):
     """Enforced spending policy for a single agent.
 
-    Monetary values are stored as USD with 6 decimal places (matching USDC's
-    6-decimal precision) using Numeric, never floats, to avoid rounding
-    errors in financial comparisons.
+    Monetary values are stored as USD with 6 decimal places (matching
+    USDC's 6-decimal precision) using Numeric, never floats.
     """
 
     __tablename__ = "spending_policies"
@@ -51,12 +51,13 @@ class SpendingPolicy(Base):
     max_transaction_amount: Mapped[Numeric] = mapped_column(Numeric(18, 6), nullable=False)
     daily_limit: Mapped[Numeric] = mapped_column(Numeric(18, 6), nullable=False)
     min_provider_reputation: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
+    restrict_to_allowed_listings: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
     agent: Mapped["Agent"] = relationship(back_populates="policy")
-    allowed_providers: Mapped[list["AllowedProvider"]] = relationship(
+    allowed_listings: Mapped[list["AllowedListing"]] = relationship(
         back_populates="policy", cascade="all, delete-orphan"
     )
 
@@ -64,18 +65,23 @@ class SpendingPolicy(Base):
         return f"<SpendingPolicy agent_id={self.agent_id} max_tx={self.max_transaction_amount}>"
 
 
-class AllowedProvider(Base):
-    """Join table: which providers a given policy permits the agent to pay."""
+class AllowedListing(Base):
+    """Join table: which marketplace listings a policy permits the agent to buy from.
 
-    __tablename__ = "allowed_providers"
+    Only enforced when `restrict_to_allowed_listings` is True on the policy,
+    so by default an agent can shop the whole marketplace subject to its
+    limits and the minimum reputation bar.
+    """
+
+    __tablename__ = "allowed_listings"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     policy_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("spending_policies.id", ondelete="CASCADE"), nullable=False
     )
-    provider_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("providers.id", ondelete="CASCADE"), nullable=False
+    listing_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), nullable=False
     )
 
-    policy: Mapped["SpendingPolicy"] = relationship(back_populates="allowed_providers")
-    provider: Mapped["Provider"] = relationship()
+    policy: Mapped["SpendingPolicy"] = relationship(back_populates="allowed_listings")
+    listing: Mapped["Listing"] = relationship()

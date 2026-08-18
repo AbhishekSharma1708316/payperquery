@@ -1,15 +1,7 @@
 import uuid
 from datetime import datetime
-from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
-
-
-class PaymentRequest(BaseModel):
-    agent_id: uuid.UUID
-    provider_id: uuid.UUID
-    amount: Decimal = Field(..., gt=0)
-    currency: str = Field(default="USDC", max_length=10)
+from pydantic import BaseModel, ConfigDict
 
 
 class TransactionOut(BaseModel):
@@ -17,23 +9,16 @@ class TransactionOut(BaseModel):
 
     id: uuid.UUID
     agent_id: uuid.UUID
-    provider_id: uuid.UUID | None
-    amount: Decimal
-    currency: str
+    listing_id: uuid.UUID | None
+    amount_microalgos: int
     status: str
-    payment_reference: str | None
-    x402_payment_identifier: str | None
-    idempotency_key: str
+    deposit_tx_id: str | None
+    payer_address: str | None
     risk_score: int | None
+    response_status_code: int | None
     failure_reason: str | None
     created_at: datetime
     completed_at: datetime | None
-
-
-class PaymentResult(BaseModel):
-    transaction: TransactionOut
-    policy_decision: dict
-    service_result: dict | None = None
 
 
 class EscrowOut(BaseModel):
@@ -42,6 +27,11 @@ class EscrowOut(BaseModel):
     id: uuid.UUID
     transaction_id: uuid.UUID
     status: str
+    amount_microalgos: int
+    platform_fee_microalgos: int
+    deposit_tx_id: str
+    payout_tx_id: str | None
+    refund_tx_id: str | None
     notes: str | None
     created_at: datetime
     resolved_at: datetime | None
@@ -49,16 +39,3 @@ class EscrowOut(BaseModel):
 
 class EscrowResolveRequest(BaseModel):
     notes: str | None = None
-
-
-class DashboardStats(BaseModel):
-    wallet_balance_placeholder: str = Field(
-        description="AgentVault does not custody funds; this reflects the sum "
-        "of verified payments made, not a real wallet balance."
-    )
-    today_spending: Decimal
-    successful_payments_today: int
-    blocked_payments_today: int
-    average_transaction_value: Decimal
-    total_agents: int
-    total_providers: int

@@ -7,27 +7,53 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- App ---
-    APP_NAME: str = "AgentVault"
+    APP_NAME: str = "APIMarket"
     ENVIRONMENT: str = "development"
-    SECRET_KEY: str = "change-me-in-production-agentvault-secret-key"
+    SECRET_KEY: str = "change-me-in-production-apimarket-secret-key"
 
     # --- Database ---
-    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/agentvault"
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@ep-example.neon.tech/apimarket?ssl=require"
     DB_ECHO: bool = False
-
-    # --- x402 / Algorand (AVM) ---
-    X402_FACILITATOR_URL: str = "https://x402.org/facilitator"
-    ALGORAND_NETWORK_CAIP2: str = "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI="
-    USDC_TESTNET_ASA_ID: int = 10458941
 
     # --- CORS ---
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
-    # --- Policy defaults ---
+    # --- Algorand network ---
+    ALGOD_ADDRESS: str = "https://testnet-api.algonode.cloud"
+    ALGOD_TOKEN: str = ""
+    INDEXER_ADDRESS: str = "https://testnet-idx.algonode.cloud"
+    INDEXER_TOKEN: str = ""
+    ALGORAND_NETWORK: str = "testnet"
+    USDC_TESTNET_ASA_ID: int = 10458941
+
+    # --- x402 protocol ---
+    X402_SCHEME: str = "exact"
+    X402_QUOTE_TTL_SECONDS: int = 120
+    X402_QUOTE_SECRET: str = "change-me-in-production-x402-quote-hmac-secret"
+    MIN_CONFIRMATIONS: int = 1
+
+    # --- Platform escrow wallet -------------------------------------------------
+    # THIS is what makes payment real escrow instead of "pay and pray":
+    # agents pay the x402 quote to ESCROW_WALLET_ADDRESS (an address the
+    # PLATFORM controls), not straight to the provider. Funds only leave this
+    # wallet when the platform's escrow service explicitly RELEASES them to
+    # the provider (after the upstream call succeeds) or REFUNDS them back to
+    # the paying agent (after a failure/dispute). ESCROW_WALLET_MNEMONIC must
+    # be the 25-word mnemonic that controls ESCROW_WALLET_ADDRESS, and must
+    # be treated as a production secret (KMS/secrets manager), never committed.
+    ESCROW_WALLET_ADDRESS: str = "PLATFORMESCROWALGORANDADDRESSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    ESCROW_WALLET_MNEMONIC: str = ""
+    ESCROW_AUTO_RELEASE: bool = True  # release automatically once upstream call succeeds
+    ESCROW_HOLD_SECONDS: int = 0  # optional cooling-off period before auto-release is allowed
+
+    # --- Proxy / upstream calls ---
+    UPSTREAM_TIMEOUT_SECONDS: float = 15.0
+
+    # --- Policy defaults for newly-created agents ---
     DEFAULT_MIN_PROVIDER_REPUTATION: int = 50
 
-    # --- Mock provider (demo) ---
-    MOCK_PROVIDER_PAY_TO: str = "MOCKPROVIDERALGORANDADDRESSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    # --- Platform commission (optional, taken out of the release amount) ---
+    PLATFORM_FEE_BPS: int = 250  # 2.5%, in basis points
 
 
 @lru_cache

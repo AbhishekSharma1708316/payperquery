@@ -1,69 +1,40 @@
-from datetime import UTC, datetime
-from decimal import Decimal
+import uuid
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.agent import Agent
-from app.models.provider import Provider
 from app.models.transaction import Transaction, TransactionStatus
-from app.schemas.transaction import DashboardStats
+from app.schemas.transaction import TransactionOut
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/api/transactions", tags=["dashboard"])
 
 
-@router.get("/stats", response_model=DashboardStats)
-async def get_dashboard_stats(db: AsyncSession = Depends(get_db)) -> DashboardStats:
-    start_of_day = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+@router.get("", response_model=list[TransactionOut])
+async def list_transactions(
+    db: AsyncSession = Depends(get_db),
+    agent_id: uuid.UUID | None = None,
+    listing_id: uuid.UUID | None = None,
+    status_filter: TransactionStatus | None = None,
+    limit: int = Query(default=50, le=500),
+) -> list[Transaction]:
+    query = select(Transaction).order_by(Transaction.created_at.desc()).limit(limit)
+    if agent_id:
+        query = query.where(Transaction.agent_id == agent_id)
+    if listing_id:
+        query = query.where(Transaction.listing_id == listing_id)
+    if status_filter:
+        query = query.where(Transaction.status == status_filter)
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
-    spent_result = await db.execute(
-        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.status.in_(
-                [TransactionStatus.PAYMENT_VERIFIED, TransactionStatus.SERVICE_COMPLETED]
-            ),
-            Transaction.created_at >= start_of_day,
-        )
-    )
-    today_spending = Decimal(spent_result.scalar_one())
 
-    successful_result = await db.execute(
-        select(func.count(Transaction.id)).where(
-            Transaction.status.in_(
-                [TransactionStatus.PAYMENT_VERIFIED, TransactionStatus.SERVICE_COMPLETED]
-            ),
-            Transaction.created_at >= start_of_day,
-        )
-    )
-    successful_today = successful_result.scalar_one()
+@router.get("/{transaction_id}", response_model=TransactionOut)
+async def get_transaction(transaction_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Transaction:
+    from fastapi import HTTPException
 
-    blocked_result = await db.execute(
-        select(func.count(Transaction.id)).where(
-            Transaction.status == TransactionStatus.POLICY_BLOCKED,
-            Transaction.created_at >= start_of_day,
-        )
-    )
-    blocked_today = blocked_result.scalar_one()
-
-    avg_result = await db.execute(
-        select(func.coalesce(func.avg(Transaction.amount), 0)).where(
-            Transaction.status.in_(
-                [TransactionStatus.PAYMENT_VERIFIED, TransactionStatus.SERVICE_COMPLETED]
-            )
-        )
-    )
-    average_transaction_value = Decimal(avg_result.scalar_one())
-
-    total_agents = (await db.execute(select(func.count(Agent.id)))).scalar_one()
-    total_providers = (await db.execute(select(func.count(Provider.id)))).scalar_one()
-
-    return DashboardStats(
-        wallet_balance_placeholder="N/A - AgentVault does not custody funds",
-        today_spending=today_spending,
-        successful_payments_today=successful_today,
-        blocked_payments_today=blocked_today,
-        average_transaction_value=average_transaction_value,
-        total_agents=total_agents,
-        total_providers=total_providers,
-    )
+    txn = await db.get(Transaction, transaction_id)
+    if txn is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return txn

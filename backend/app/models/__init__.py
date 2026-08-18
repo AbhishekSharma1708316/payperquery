@@ -1,13 +1,13 @@
-from app.models.agent import Agent, AllowedProvider, SpendingPolicy
+from app.models.agent import Agent, AllowedListing, SpendingPolicy
 from app.models.escrow import Escrow, EscrowStatus
-from app.models.provider import Provider
+from app.models.listing import Listing
 from app.models.transaction import Transaction, TransactionStatus
 
 __all__ = [
     "Agent",
     "SpendingPolicy",
-    "AllowedProvider",
-    "Provider",
+    "AllowedListing",
+    "Listing",
     "Transaction",
     "TransactionStatus",
     "Escrow",
