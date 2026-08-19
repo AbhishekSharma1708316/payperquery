@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     routes_agents,
+    routes_chat,
     routes_dashboard,
     routes_escrow,
     routes_listings,
@@ -72,6 +73,7 @@ app.include_router(routes_marketplace.router)
 app.include_router(routes_purchase.router)
 app.include_router(routes_escrow.router)
 app.include_router(routes_dashboard.router)
+app.include_router(routes_chat.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # --- Platform commission (optional, taken out of the release amount) ---
     PLATFORM_FEE_BPS: int = 250  # 2.5%, in basis points
 
+    # --- Support chatbot (Gemini) ---
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    CHATBOT_ENABLED: bool = True
+    CHATBOT_HISTORY_TURNS: int = 6  # how many prior turns to keep as context
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -74,7 +74,7 @@ def main() -> None:
     private_key = mnemonic.to_private_key(payer_mnemonic)
     payer_address = account.address_from_private_key(private_key)
 
-    client = httpx.Client(base_url=args.base_url, timeout=30.0)
+    client = httpx.Client(base_url=args.base_url, timeout=70.0)
 
     print("1. Publishing a demo marketplace listing (Open-Meteo weather API)...")
     listing_resp = client.post(

@@ -119,6 +119,14 @@ app/
     routes_dashboard.py          Transaction listing/lookup
 scripts/
   test_client.py                 Full end-to-end demo against Algorand Testnet
+frontend/
+  src/
+    pages/                       Dashboard, Marketplace, Listings, Agents, Transactions, Escrow
+    components/
+      LedgerTracker.tsx           Deposit -> Held -> Released/Refunded custody chain, the app's signature visual
+      NavBar.tsx, Card.tsx, StatusBadge.tsx, EmptyState.tsx
+    services/api.ts               Typed fetch wrapper over the backend
+    types/index.ts                Mirrors the backend Pydantic schemas
 requirements.txt
 Dockerfile / docker-compose.yml
 .env.example
@@ -229,7 +237,27 @@ export PAYER_MNEMONIC="your 25 word funded testnet mnemonic here"
 python scripts/test_client.py
 ```
 
-## Design notes
+## 7. Run the dashboard (frontend)
+
+A React + Tailwind dashboard lives in `frontend/` — marketplace search with
+live quote previews, provider listing management, agent registration with
+policy limits, a transaction ledger, and the escrow ledger with the
+deposit → held → released/refunded custody chain made visually explicit.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173`. The Vite dev server proxies `/api`,
+`/market`, and `/health` to `http://localhost:8000`, so run the backend
+first (steps 1–3 above). `npm run build` produces a static `dist/` you can
+serve from anywhere (e.g. behind the same reverse proxy as the API, or a
+static host with the API on a separate origin — adjust the proxy config
+or add `VITE_API_BASE` wiring if you split hosting).
+
+
 
 - **Policy runs before any payment.** `check_payment_policy()` is a pure
   function (agent active/paused → provider active/allowed/reputation →
@@ -260,10 +288,12 @@ python scripts/test_client.py
   should sit behind real auth (API keys or OAuth) before production use.
 - Escrow is platform-custodied, not a trustless on-chain smart-contract
   escrow (see "honesty about the trust model" above).
-- No frontend yet. Both source projects had one (PayPerQuery's `/docs`
-  Swagger UI only; AgentVault had a React dashboard) — a merged React
-  dashboard (agent management, listing browser, escrow ledger) is a
-  natural next step and wasn't built in this pass.
+- The dashboard covers browsing, publishing, registering, and monitoring —
+  it does not sign and submit the actual Algorand payment (that requires a
+  wallet's private key). "Preview quote" in the marketplace shows the
+  exact 402 terms an agent would receive; use `scripts/test_client.py` or
+  your own wallet integration to actually pay one and drive it through to
+  `SERVICE_COMPLETED`.
 - No automated test suite yet (AgentVault had 29 pytest cases against its
   policy engine/escrow/idempotency; porting and extending those to cover
   the new escrow-wallet payout path is recommended before going further).
