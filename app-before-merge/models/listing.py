@@ -43,7 +43,6 @@ class Listing(Base):
     # --- Reputation inputs (see policies/reputation.py for the formula) ---
     successful_transactions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     failed_transactions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    partial_transactions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     average_latency_ms: Mapped[int] = mapped_column(Integer, default=200, nullable=False)
     refund_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     dispute_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

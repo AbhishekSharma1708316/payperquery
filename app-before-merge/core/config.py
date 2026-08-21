@@ -45,8 +45,6 @@ class Settings(BaseSettings):
     ESCROW_WALLET_MNEMONIC: str = ""
     ESCROW_AUTO_RELEASE: bool = True  # release automatically once upstream call succeeds
     ESCROW_HOLD_SECONDS: int = 0  # optional cooling-off period before auto-release is allowed
-    ESCROW_STALE_SECONDS: int = 600  # HELD longer than this with no settlement -> watchdog auto-refunds
-    ESCROW_WATCHDOG_INTERVAL_SECONDS: int = 60  # how often the background sweep runs
 
     # --- Proxy / upstream calls ---
     UPSTREAM_TIMEOUT_SECONDS: float = 15.0

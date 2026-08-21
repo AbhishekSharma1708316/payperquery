@@ -13,7 +13,6 @@ class EscrowStatus(str, enum.Enum):
     HELD = "HELD"          # funds confirmed in the platform's escrow wallet
     RELEASED = "RELEASED"    # paid out on-chain to the provider's pay_to_address
     REFUNDED = "REFUNDED"    # paid out on-chain back to the agent's payer_address
-    PARTIALLY_RELEASED = "PARTIALLY_RELEASED"  # split between provider and agent
     DISPUTED = "DISPUTED"    # frozen, awaiting manual admin resolution
 
 
@@ -53,15 +52,6 @@ class Escrow(Base):
     deposit_tx_id: Mapped[str] = mapped_column(String(100), nullable=False)   # agent -> escrow wallet
     payout_tx_id: Mapped[str | None] = mapped_column(String(100), nullable=True)  # escrow -> provider
     refund_tx_id: Mapped[str | None] = mapped_column(String(100), nullable=True)  # escrow -> agent
-
-    # Populated only when status == PARTIALLY_RELEASED
-    provider_share_bps: Mapped[int | None] = mapped_column(nullable=True)
-    provider_amount_microalgos: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    agent_amount_microalgos: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-
-    # Dispute evidence trail -- freeform JSON-serializable text blobs
-    # attached by either party or the platform while status == DISPUTED.
-    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

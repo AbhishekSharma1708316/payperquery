@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,25 +16,10 @@ from app.api import (
 from app.core.config import get_settings
 from app.core.database import init_models
 from app.payments import escrow_wallet
-from app.services import escrow_watchdog
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("apimarket.main")
 settings = get_settings()
-
-
-async def _escrow_watchdog_loop() -> None:
-    """Runs escrow_watchdog.run_once() on a fixed interval for the life of
-    the app. A single misbehaving sweep logs and retries next tick rather
-    than crashing the whole process."""
-    while True:
-        try:
-            handled = await escrow_watchdog.run_once()
-            if handled:
-                logger.info("Escrow watchdog auto-resolved %d stale escrow(s)", handled)
-        except Exception:
-            logger.exception("Escrow watchdog sweep failed")
-        await asyncio.sleep(settings.ESCROW_WATCHDOG_INTERVAL_SECONDS)
 
 
 @asynccontextmanager
@@ -59,16 +43,7 @@ async def lifespan(app: FastAPI):
             "ESCROW_WALLET_MNEMONIC is not set -- quotes will be issued but escrow "
             "release/refund payouts will fail until it is configured."
         )
-
-    watchdog_task = asyncio.create_task(_escrow_watchdog_loop())
-    try:
-        yield
-    finally:
-        watchdog_task.cancel()
-        try:
-            await watchdog_task
-        except asyncio.CancelledError:
-            pass
+    yield
 
 
 app = FastAPI(
