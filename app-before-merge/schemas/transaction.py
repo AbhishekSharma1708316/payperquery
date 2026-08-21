@@ -32,25 +32,10 @@ class EscrowOut(BaseModel):
     deposit_tx_id: str
     payout_tx_id: str | None
     refund_tx_id: str | None
-    provider_share_bps: int | None
-    provider_amount_microalgos: int | None
-    agent_amount_microalgos: int | None
     notes: str | None
-    evidence: str | None
     created_at: datetime
     resolved_at: datetime | None
 
 
 class EscrowResolveRequest(BaseModel):
-    notes: str | None = None
-
-
-class EvidenceSubmitRequest(BaseModel):
-    submitted_by: str  # "agent" or "provider" -- freeform label for the audit trail
-    message: str
-    reference_url: str | None = None  # e.g. a link to logs, screenshots, upstream response dump
-
-
-class PartialReleaseRequest(BaseModel):
-    provider_share_bps: int  # 0-10000; provider gets this fraction, agent is refunded the rest
     notes: str | None = None

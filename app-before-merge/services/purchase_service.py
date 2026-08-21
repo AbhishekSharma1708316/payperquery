@@ -305,11 +305,7 @@ async def fulfil_and_settle(
 
     transaction.response_status_code = upstream_response.status_code
 
-    partial_share_bps = _partial_share_bps_from_response(upstream_response)
-
-    if partial_share_bps is not None:
-        await _settle_partial(db, transaction, listing, provider_share_bps=partial_share_bps)
-    elif 200 <= upstream_response.status_code < 300:
+    if 200 <= upstream_response.status_code < 300:
         await _settle_success(db, transaction, listing)
     else:
         await _settle_failure(
@@ -318,83 +314,6 @@ async def fulfil_and_settle(
         )
 
     return upstream_response
-
-
-def _partial_share_bps_from_response(response: httpx.Response) -> int | None:
-    """Decides whether an upstream response counts as a PARTIAL outcome
-    rather than a clean success/failure, and if so, what fraction of the
-    price the provider should still get paid.
-
-    Two triggers, either is sufficient:
-      * HTTP 206 Partial Content -- defaults to a 50/50 split unless the
-        provider also sends X-Partial-Share-Bps.
-      * A provider-set X-Partial-Share-Bps header on ANY response --
-        lets a provider that returned 200 but only did, say, 70% of the
-        requested work (batch APIs, partial search results, etc.) claim
-        exactly 70% (7000 bps) rather than the platform guessing.
-    Returns None (no partial handling) for a normal clean success/failure.
-    """
-    header_value = response.headers.get("X-Partial-Share-Bps")
-    if header_value is not None:
-        try:
-            bps = int(header_value)
-        except ValueError:
-            logger.warning("Ignoring non-integer X-Partial-Share-Bps=%r", header_value)
-            return None
-        if 0 <= bps <= 10_000:
-            return bps
-        logger.warning("Ignoring out-of-range X-Partial-Share-Bps=%d", bps)
-        return None
-
-    if response.status_code == 206:
-        return 5_000  # 50/50 default when the provider didn't specify a share
-
-    return None
-
-
-async def _settle_partial(
-    db: AsyncSession, transaction: Transaction, listing: Listing, *, provider_share_bps: int
-) -> None:
-    escrow_result = await db.execute(select(Escrow).where(Escrow.transaction_id == transaction.id))
-    escrow = escrow_result.scalar_one()
-
-    try:
-        split = escrow_wallet.split_release(
-            pay_to_address=listing.pay_to_address,
-            payer_address=transaction.payer_address,
-            total_amount_microalgos=escrow.amount_microalgos,
-            provider_share_bps=provider_share_bps,
-            asa_id=escrow.asa_id,
-            platform_fee_microalgos=escrow.platform_fee_microalgos,
-        )
-        escrow.status = EscrowStatus.PARTIALLY_RELEASED
-        escrow.payout_tx_id = split.provider_payout.tx_id if split.provider_payout else None
-        escrow.refund_tx_id = split.agent_refund.tx_id if split.agent_refund else None
-        escrow.provider_share_bps = provider_share_bps
-        escrow.provider_amount_microalgos = split.provider_amount_microalgos
-        escrow.agent_amount_microalgos = split.agent_amount_microalgos
-        escrow.resolved_at = datetime.now(UTC)
-        transaction.status = TransactionStatus.PARTIALLY_COMPLETED
-        transaction.completed_at = datetime.now(UTC)
-        # Counts as neither a clean success nor a clean failure for
-        # reputation purposes -- tracked separately so a provider can't
-        # game its success rate by returning 206 for everything.
-        listing.partial_transactions = (listing.partial_transactions or 0) + 1
-        logger.info(
-            "Escrow PARTIALLY_RELEASED tx=%s provider_share_bps=%d provider_tx=%s agent_tx=%s",
-            transaction.id, provider_share_bps, escrow.payout_tx_id, escrow.refund_tx_id,
-        )
-    except escrow_wallet.EscrowWalletError as exc:
-        # Covers both "neither leg went out" and "one leg went out, the
-        # other failed" -- split_release's own error message distinguishes
-        # these cases; either way a human needs to look at it, never guess.
-        escrow.status = EscrowStatus.DISPUTED
-        escrow.notes = f"Partial release failed, needs manual resolution: {exc}"
-        transaction.status = TransactionStatus.DISPUTED
-        transaction.failure_reason = str(exc)
-        logger.error("Escrow partial release FAILED tx=%s: %s", transaction.id, exc)
-
-    await db.commit()
 
 
 async def _settle_success(db: AsyncSession, transaction: Transaction, listing: Listing) -> None:

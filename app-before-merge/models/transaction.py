@@ -17,7 +17,6 @@ class TransactionStatus(str, enum.Enum):
     ESCROW_HELD = "ESCROW_HELD"             # payment verified on-chain, funds sitting in platform escrow
     UPSTREAM_CALLED = "UPSTREAM_CALLED"     # proxying to the provider's API, awaiting result
     SERVICE_COMPLETED = "SERVICE_COMPLETED"  # upstream call succeeded, escrow released to provider
-    PARTIALLY_COMPLETED = "PARTIALLY_COMPLETED"  # upstream returned a partial result, escrow split
     FAILED = "FAILED"                       # upstream call failed / payment verification failed
     REFUNDED = "REFUNDED"                   # escrow refunded back to the agent
     DISPUTED = "DISPUTED"                   # manually flagged, awaiting human resolution
