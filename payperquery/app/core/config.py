@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     ALGOD_TOKEN: str = ""
     INDEXER_ADDRESS: str = "https://testnet-idx.algonode.cloud"
     INDEXER_TOKEN: str = ""
-    ALGORAND_NETWORK: str = "testnet"
+    ALGORAND_NETWORK = "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI="
     USDC_TESTNET_ASA_ID: int = 10458941
 
     # --- x402 protocol ---
