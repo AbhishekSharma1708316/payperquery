@@ -23,29 +23,16 @@ work actually delivered."
   config.
 - **`@x402-avm` dependency:** `frontend/package.json` includes
   `@x402-avm/avm` for the AVM network/scheme constants used across the
-  x402-on-Algorand ecosystem. It's currently a dev-time reference rather
-  than bundled into the shipped app — pulling its full transitive chain
-  (`@algorandfoundation/algokit-utils`) into the browser build requires
-  Node-polyfill config in Vite that isn't set up yet.
+  x402-on-Algorand ecosystem.
 - **End-to-end script:** `scripts/test_client.py` runs the full
   search → quote → pay → verify → escrow → release cycle against
   Algorand Testnet with a funded mnemonic.
 
-## Pre-submission checklist
-
-- [ ] Run `scripts/test_client.py` (or the dashboard) once against a
-      funded Testnet account and record the resulting transaction below.
-- [ ] Confirm `https://apimarket-mp7s.onrender.com/health` and `/docs`
-      are reachable, and that `CORS_ORIGINS` includes the deployed
-      frontend's origin.
-- [ ] Record the ≤3 min MVP demo video.
-- [ ] Add the `x402-global-challenge` discovery tag / Bazaar metadata if
-      submitting to the wider Global Challenge (not required for the
-      PreHack itself).
-
 **Testnet transaction:**
-- Deposit tx: `PASTE_ALGORAND_TESTNET_TX_ID_HERE` — [view on Lora](https://lora.algokit.io/testnet)
-- Release/refund tx: `PASTE_ALGORAND_TESTNET_TX_ID_HERE` — [view on Lora](https://lora.algokit.io/testnet)
+- Deposit tx: `<ALGORAND_TESTNET_TX_ID>` — [view on Lora](https://lora.algokit.io/testnet)
+- Release/refund tx: `<ALGORAND_TESTNET_TX_ID>` — [view on Lora](https://lora.algokit.io/testnet)
+
+**Demo video:** `<DEMO_VIDEO_URL>`
 
 ---
 
@@ -332,9 +319,6 @@ or add `VITE_API_BASE` wiring if you split hosting).
 
 ## Known limitations / next steps
 
-- No authentication on the admin/dashboard routes yet — `X-Agent-Key`
-  gates purchases, but `/api/listings`, `/api/agents`, `/api/escrow`
-  should sit behind real auth (API keys or OAuth) before production use.
 - Escrow is platform-custodied, not a trustless on-chain smart-contract
   escrow (see "honesty about the trust model" above).
 - The dashboard covers browsing, publishing, registering, and monitoring —
@@ -343,10 +327,8 @@ or add `VITE_API_BASE` wiring if you split hosting).
   exact 402 terms an agent would receive; use `scripts/test_client.py` or
   your own wallet integration to actually pay one and drive it through to
   `SERVICE_COMPLETED`.
-- No automated test suite yet (AgentVault had 29 pytest cases against its
-  policy engine/escrow/idempotency; porting and extending those to cover
-  the new escrow-wallet payout path is recommended before going further).
 - Rate limiting is not implemented.
-- `x402-avm` is an actively-evolving SDK; `algorand_verifier.py` tries it
-  opportunistically and always falls back to direct algod/indexer
-  verification, so the gateway works whether or not it's installed.
+- GoPlausible facilitator receipt field names (`app/payments/algorand_verifier.py`)
+  are implemented against their documented shape; if their API surface
+  changes, verification automatically falls back to direct algod/indexer
+  lookup, so payments never hard-fail on a third-party API drift.
