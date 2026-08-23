@@ -56,7 +56,28 @@ def create_quote(
     signature = _sign(encoded_claims)
     return f"{encoded_claims}.{signature}", expires_at
 
-
+def build_payment_requirements(
+    *,
+    listing_path: str,
+    price_microalgos: int,
+    asa_id: int | None,
+) -> dict:
+    return {
+        "scheme": settings.X402_SCHEME,
+        "network": settings.ALGORAND_NETWORK,
+        "maxAmountRequired": str(price_microalgos),
+        "resource": f"/market/{listing_path}/call",
+        "description": f"Payment required for '{listing_path}'",
+        "mimeType": "application/json",
+        "payTo": settings.ESCROW_WALLET_ADDRESS,
+        "maxTimeoutSeconds": settings.X402_QUOTE_TTL_SECONDS,
+        "asset": str(asa_id or 0),
+        "outputSchema": None,
+        "extra": {
+            "name": "USDC" if asa_id else "ALGO",
+            "decimals": 6,
+        },
+    }
 def verify_quote(
     quote_token: str,
     *,
