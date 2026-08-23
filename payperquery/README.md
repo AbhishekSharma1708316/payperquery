@@ -1,5 +1,84 @@
 # APIMarket
 
+**USP:** most x402 demos settle the agent's payment straight to the
+provider and call it done. APIMarket is the only one in this space that
+routes payment into a **platform-held escrow wallet first**, proxies the
+call, and only then releases (or refunds) — with a real signed Algorand
+transaction either way, a `DISPUTED` state instead of silent fund loss on
+payout failure, and a policy engine + reputation score that decide
+*before* any money moves. It's the difference between "the agent paid, we
+hope the API responds" and "the agent's money is only ever released for
+work actually delivered."
+
+## ⚠️ x402 Global Challenge — honest submission status
+
+This section exists so nobody on the team or judging it is surprised.
+Updated 23 Aug 2026, ahead of the Bengaluru PreHack.
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Public GitHub repo with README | ✅ | This repo. |
+| x402 payment flow live on Algorand Testnet | ⚠️ Partial | The full quote → pay → verify → escrow → release/refund lifecycle works end-to-end against Algorand Testnet (`scripts/test_client.py`), but **no transaction has been run and recorded yet for this submission** — see checklist below. |
+| Actual x402 transaction demonstrable via Lora | ⚠️ Not yet captured | Mechanically possible today; needs to actually be run and the tx ID pasted into this README before submission. |
+| Payment flow works through the **GoPlausible facilitator** | ❌ Not wired | `app/payments/algorand_verifier.py` calls a generic `x402_facilitator.verify(...)` from the `x402-avm` **Python** package if installed, with no facilitator URL configured anywhere (no `FACILITATOR_URL` in `config.py` or `.env.example`), and it **silently falls back to direct algod/indexer verification** if that import or call fails — which is the path actually exercised today. This means verification currently happens directly against algod, not through GoPlausible's facilitator endpoint (`https://facilitator.goplausible.xyz`). This needs explicit wiring before submission; see action items. |
+| `@x402-avm` dependency in `package.json` | ❌ Missing | The literal requirement names a `package.json` entry, i.e. the **npm-scoped** `@x402-avm/*` packages (`@x402-avm/core`, `@x402-avm/avm`, etc.) used in Node/Express/Next projects. This backend is Python/FastAPI and depends on the **PyPI** package `x402-avm` in `requirements.txt` instead — same protocol family, wrong ecosystem for a literal check of `package.json`. A checklist-driven judge or script may flag this as missing outright. |
+| Live and working deployed project | ⚠️ Unverified | Backend appears to be deployed on Render; confirm `/health` and `/docs` are reachable and CORS is opened for whatever origin the frontend ends up on (`CORS_ORIGINS` in `app/core/config.py` currently only allows `localhost:5173`). Frontend has not been deployed publicly yet as of this update. |
+| MVP demo video (≤3 min) | ❌ Not yet recorded | |
+| README: problem/solution explanation | ✅ | Above and in "Architecture". |
+| README: local run instructions | ✅ | Steps 1–7 below. |
+| README: architecture diagram | ✅ (ASCII) | See "Architecture" below. No image/graphic version yet — ASCII may or may not satisfy a judge expecting a visual diagram. |
+| README: at least one Testnet x402 transaction link | ❌ Missing | Placeholder added below — fill in before submitting. |
+| README: USP | ✅ | Added above. |
+
+### Where we actually stand, plainly
+
+The **engineering is real and substantially ahead of most hackathon
+submissions**: real on-chain verification against algod/indexer, real
+signed escrow release/refund transactions, a genuine RBAC + auth system,
+and a pure/tested policy engine. That's not vaporware.
+
+What's missing is **the specific plumbing this challenge's judges will
+check for**, and none of it is a redesign — it's config and one afternoon
+of wiring:
+
+1. **Point verification at GoPlausible, not just algod.** Add a
+   `FACILITATOR_URL` setting (`https://facilitator.goplausible.xyz` or
+   whatever endpoint GoPlausible's docs specify for the exact scheme) to
+   `app/core/config.py` and `.env.example`, and pass it explicitly into
+   the `x402_facilitator.verify(...)` call in `algorand_verifier.py`
+   instead of relying on whatever default the package assumes. Keep the
+   algod/indexer path as a fallback if you want resilience, but the
+   *primary* path needs to hit GoPlausible so activity shows up in their
+   leaderboard/dashboard.
+2. **Run one real Testnet transaction and paste the tx ID here.**
+   `python scripts/test_client.py` against a funded Testnet mnemonic
+   does this today. Grab the resulting `deposit_tx_id` (and ideally the
+   `payout_tx_id`), open it on
+   [Lora](https://lora.algokit.io/testnet), and paste both links into
+   the placeholder below.
+3. **Decide what to do about the `@x402-avm` npm requirement.** Options,
+   roughly in order of honesty: (a) note in the submission that this is
+   a Python/FastAPI implementation of the same x402-AVM protocol family
+   and point judges at `x402-avm` in `requirements.txt` plus the actual
+   working on-chain flow as proof, rather than adding an unused npm
+   dependency just to satisfy a grep; or (b) if the frontend ever
+   initiates payment itself instead of just previewing quotes, that
+   would be a legitimate place for `@x402-avm/core` or `@x402-avm/avm`
+   to actually get used, not just listed.
+4. **Verify and, if needed, fix the deployment.** Confirm
+   `https://apimarket-mp7s.onrender.com/health` and `/docs` load, and
+   widen `CORS_ORIGINS` to include wherever the frontend actually ends
+   up hosted (see the frontend zip / deployment notes elsewhere in this
+   repo).
+5. **Record the demo video** once 1–2 are done, so it can show a real
+   quote → pay → escrow → release cycle rather than a mocked one.
+
+**Testnet transaction (fill in before submitting):**
+- Deposit tx: `PASTE_ALGORAND_TESTNET_TX_ID_HERE` — [view on Lora](https://lora.algokit.io/testnet)
+- Release/refund tx: `PASTE_ALGORAND_TESTNET_TX_ID_HERE` — [view on Lora](https://lora.algokit.io/testnet)
+
+---
+
 A marketplace where AI agents **search for APIs**, and **pay for them via x402
 into an escrow account the platform controls** — not directly to the
 provider. The provider only gets paid once the platform has actually
